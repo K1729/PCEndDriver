@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Windows.Forms;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -6,24 +7,42 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 
 //Comm ports driver
+using System.IO;
 using System.IO.Ports;
 using System.Threading;
-using System.IO;
 
 namespace ArduinoDriver
 {
-    public partial class  Form1 : Form
+    public partial class  ArduinoPrinter : Form
     {
-        public SerialPort CurrentPort;
+        public static System.Timers.Timer aTimer;
+        public SerialPort ArduinoPort;
+        public SerialPort[] SerialPorts;
+        string message;
+        string returnMessage = "";
         public bool PortFound;
-        public int Bit2;
-        public int Bit4;
-        public Form1()
+        const int messageLength = 16;
+
+        public ArduinoPrinter()
         {
             InitializeComponent();
+            this.AllowDrop = true;
+            
+            this.MaximumSize = new Size(int.MaxValue, int.MaxValue);
+            this.DragEnter += new DragEventHandler(Form_DragEnter);
+            this.DragDrop += new DragEventHandler(Form_DragDrop);
+
+            // Timer settings
+            aTimer = new System.Timers.Timer();
+            aTimer.Interval = 500;
+            aTimer.Elapsed += OnTimedEvent;
+            aTimer.AutoReset = false;
+
+            SetComPort();
+            // ArduinoPort.BaudRate = 9600;
+            // ArduinoPort.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
         }
 
         private void button5_Click(object sender, EventArgs e)
@@ -37,122 +56,151 @@ namespace ArduinoDriver
         {
             try
             {
+                Identify.Enabled = false;
                 string[] ports = SerialPort.GetPortNames();
-                foreach (string port in ports)
+
+                for(int i = 0; i < (ports.Count() - 1); i++)
                 {
-                    CurrentPort = new SerialPort(port, 9600);
-                    if (DetectArduino())
-                    {
-                        PortFound = true;
-                        break;
-                    }
-                    else
-                    {
-                        PortFound = false;
-                    }
+                    SerialPorts[i].PortName = ports[i];
+                    message = "IDENTIFY\n";
+
+                    SerialPorts[i].Open();
+                    SerialPorts[i].DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
+                    Sender(SerialPorts[i]);
                 }
+                aTimer.Enabled = true;
             }
             catch (Exception ex)
             {
                 InfoBox.Text += "\nError: " + ex.ToString();
-            }
-            if (PortFound == true)
-            {
-                InfoBox.Text += "\nArduino found";
-            }
-            else
-            {
-                InfoBox.Text += "\nArduino not found";
+                Identify.Enabled = true;
             }
         }
 
-        public void Messenger(string message)
+        public void Sender(SerialPort porto)
         {
-
-        }
-
-        public bool DetectArduino()
-        {
+            byte[] buffer = new byte[messageLength];
+            int n = 0;
             try
             {
-                // The below settings are for the Hello handshake
-                int IntReturnASCII = 0;
-                string message = "IDENTIFY";
-                int count = 0;
-                string returnMessage = "";
-                byte[] buffer = new byte[8];
-
-                
-                while (returnMessage != "RESEND")
+                foreach (char c in message)
                 {
-                    int n = 0;
-                    try
+                    buffer[n] = Convert.ToByte(c);
+                    n++;
+                }
+                porto.Write(buffer, 0, messageLength - 1);
+            }
+            catch (Exception ex)
+            {
+                InfoBox.Text += "Exception in conversion funktion:\r\n";
+                InfoBox.Text += ex.ToString();
+            }
+        }
+
+        // Closes all ports
+        public void ClosePorts()
+        {
+            string[] ports = SerialPort.GetPortNames();
+            foreach (string port in ports)
+            {
+                SerialPort porto = new SerialPort(port, 9600);
+                porto.Close();
+            }
+        }
+
+        // Events:
+
+        // Fires when aTimer elapsed event is called
+        public void OnTimedEvent(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            ClosePorts();
+            aTimer.Enabled = false;
+        }
+
+        // This reads the data and saves it to returnMessage
+        public void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
+        {
+            SerialPort sp = (SerialPort)sender;
+            returnMessage += sp.ReadExisting();
+            if (returnMessage.Contains("CONNECTED"))
+            {
+                returnMessage = "";
+                ArduinoPort = sp;
+                ClosePorts();
+                ArduinoPort.Open();
+                aTimer.Enabled = true;
+            }
+            else if (returnMessage.Contains("RESEND"))
+            {
+                returnMessage = "";
+                ArduinoPort = sp;
+                message = "IDENTIFY\n";
+                Sender(sp);
+            }
+            else if (returnMessage.Count() > 16)
+            {
+                returnMessage = "";
+                message = "RESEND\n";
+                Sender(sp);
+            }
+        }
+
+        // This event occurs when the user drags over the form with
+        // the mouse during a drag and drop operation
+        private void Form_DragEnter(object sender, DragEventArgs e)
+        {
+            // Check if the Dataformat of the data can be accepted
+            // (we only accept file drops from Explorer, etc.)
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                e.Effect = DragDropEffects.Copy; // Okay
+            else
+                e.Effect = DragDropEffects.None;
+        }
+
+        // Occurs when the user releases the mouse over the drop target
+        public void Form_DragDrop(object sender, DragEventArgs e)
+        {
+            // Extract the data from the DataObject-Container into a string list
+            string[] FileList = (string[])e.Data.GetData(DataFormats.FileDrop, false);
+            // Tästä ekasta saadaan tuo osoite. Voitaisiin käyttää sitä tuon
+            // tiedoston lukemiseen...
+
+            InfoBox.Text = FileList[0];
+            message = FileList[0];
+
+            // Do something with the data...
+            // lineReader(FileList[0]);
+        }
+
+        // This reads the text file line by line
+        public void lineReader(string address)
+        {
+            int counter = 0;
+            string line;
+
+            // Read the file and display it line by line.
+            StreamReader file = new StreamReader(address);
+            while((line = file.ReadLine()) != null)
+            {
+                try
+                {
+                    if (line.Length > 0)
                     {
-                        foreach (char c in message.ToCharArray(0, 8))
+                        if (line[0] != ';')
                         {
-                            buffer[n] = Convert.ToByte(message.ToCharArray(n, n + 1)[0]);
+                            InfoBox.AppendText(counter + " " + line);
+                            InfoBox.AppendText(Environment.NewLine);
+                            counter++;
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        InfoBox.Text += "Exception in conversion funktion:\n";
-                        InfoBox.Text += ex.ToString();
-                    }
                 }
-
-                CurrentPort.Open();
-                CurrentPort.Write(buffer, 0, 8);
-                // Koita korvata tämä jollakin muulla
-                Thread.Sleep(500);
-                count = CurrentPort.BytesToRead;
-                while (count > 0)
+                catch (Exception ex)
                 {
-                    IntReturnASCII = CurrentPort.ReadByte();
-                    returnMessage += Convert.ToChar(IntReturnASCII);
-                    count--;
-                }
-                InfoBox.Text += returnMessage;
-
-                CurrentPort.Close();
-
-                if (returnMessage.Contains("CONNECTED"))
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
+                    InfoBox.Text = ex.ToString();
                 }
             }
-            catch (Exception ex)
-            {
-                InfoBox.Text += "Error in DetectAdruino():\n";
-                InfoBox.Text += ex.ToString();
-                return false;
-            }
-        }
 
-        public void MotorControl(int bit1, int bit2, int bit3,  int bit4)
-        {
-            try
-            {
-                // The below settings are for the Hello handshake
-                byte[] buffer = new byte[6];
-                buffer[0] = Convert.ToByte(255);
-                buffer[1] = Convert.ToByte(1);
-                buffer[2] = Convert.ToByte(bit1);
-                buffer[3] = Convert.ToByte(bit2);
-                buffer[4] = Convert.ToByte(bit3);
-                buffer[5] = Convert.ToByte(bit4);
-
-                CurrentPort.Open();
-                CurrentPort.Write(buffer, 0, 6);
-                CurrentPort.Close();
-            }
-            catch (Exception ex)
-            {
-                InfoBox.Text = "Error" + ex.ToString();
-            }
+            file.Close();
         }
     }
 }

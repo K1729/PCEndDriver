@@ -6,4 +6,4 @@ C:\GitHub\PCEndDriver\PCEndDriver\obj\Debug\PCEndDriver.Properties.Resources.res
 C:\GitHub\PCEndDriver\PCEndDriver\obj\Debug\PCEndDriver.csproj.GenerateResource.Cache
 C:\GitHub\PCEndDriver\PCEndDriver\obj\Debug\PCEndDriver.exe
 C:\GitHub\PCEndDriver\PCEndDriver\obj\Debug\PCEndDriver.pdb
-C:\GitHub\PCEndDriver\PCEndDriver\obj\Debug\ArduinoDriver.Form1.resources
+C:\GitHub\PCEndDriver\PCEndDriver\obj\Debug\ArduinoDriver.ArduinoPrinter.resources
