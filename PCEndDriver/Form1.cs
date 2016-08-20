@@ -29,7 +29,7 @@ namespace ArduinoDriver
         {
             InitializeComponent();
             this.AllowDrop = true;
-            
+
             this.MaximumSize = new Size(int.MaxValue, int.MaxValue);
             this.DragEnter += new DragEventHandler(Form_DragEnter);
             this.DragDrop += new DragEventHandler(Form_DragDrop);
@@ -41,8 +41,11 @@ namespace ArduinoDriver
             aTimer.AutoReset = false;
 
             SetComPort();
-            // ArduinoPort.BaudRate = 9600;
-            // ArduinoPort.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
+            foreach(string port in SerialPort.GetPortNames())
+            {
+              SerialPort porto = new SerialPort(port, 9600);
+              porto.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
+            }
         }
 
         private void button5_Click(object sender, EventArgs e)
