@@ -17,11 +17,10 @@ namespace ArduinoDriver
 {
     public partial class  ArduinoPrinter : Form
     {
-        public static System.Timers.Timer aTimer;
         public SerialPort ArduinoPort;
-        public SerialPort[] SerialPorts;
         string message;
         string returnMessage = "";
+        string[] ports;
         public bool PortFound;
         const int messageLength = 16;
 
@@ -34,18 +33,7 @@ namespace ArduinoDriver
             this.DragEnter += new DragEventHandler(Form_DragEnter);
             this.DragDrop += new DragEventHandler(Form_DragDrop);
 
-            // Timer settings
-            aTimer = new System.Timers.Timer();
-            aTimer.Interval = 500;
-            aTimer.Elapsed += OnTimedEvent;
-            aTimer.AutoReset = false;
-
             SetComPort();
-            foreach(string port in SerialPort.GetPortNames())
-            {
-              SerialPort porto = new SerialPort(port, 9600);
-              porto.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
-            }
         }
 
         private void button5_Click(object sender, EventArgs e)
@@ -59,27 +47,41 @@ namespace ArduinoDriver
         {
             try
             {
-                Identify.Enabled = false;
-                string[] ports = SerialPort.GetPortNames();
-
-                for(int i = 0; i < (ports.Count() - 1); i++)
+                ArduinoPort = new SerialPort(COMBox.SelectedValue.ToString());
+                message = "IDENTIFY\n";
+                try
                 {
-                    SerialPorts[i].PortName = ports[i];
-                    message = "IDENTIFY\n";
-
-                    SerialPorts[i].Open();
-                    SerialPorts[i].DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
-                    Sender(SerialPorts[i]);
+                    ArduinoPort.Open();
                 }
-                aTimer.Enabled = true;
+                catch (UnauthorizedAccessException ex)
+                {
+                    InfoBox.AppendText("Unauthorized Access Exception! Cannot open port " + COMBox.SelectedValue.ToString());
+                    InfoBox.AppendText(Environment.NewLine);
+                    InfoBox.AppendText(ex.ToString());
+                }
+                catch (Exception ex)
+                {
+                    InfoBox.AppendText("Unknown error: ");
+                    InfoBox.AppendText(Environment.NewLine);
+                    InfoBox.AppendText(ex.ToString());
+                }
+                Sender(ArduinoPort);
+                Thread.Sleep(500);
+
+                returnMessage += ArduinoPort.ReadLine();
+                if (returnMessage.Contains("CONNECTED"))
+                {
+                    InfoBox.AppendText(returnMessage);
+                    returnMessage = "";
+                }
             }
             catch (Exception ex)
             {
                 InfoBox.Text += "\nError: " + ex.ToString();
-                Identify.Enabled = true;
             }
         }
 
+        // Send message to port
         public void Sender(SerialPort porto)
         {
             byte[] buffer = new byte[messageLength];
@@ -100,53 +102,7 @@ namespace ArduinoDriver
             }
         }
 
-        // Closes all ports
-        public void ClosePorts()
-        {
-            string[] ports = SerialPort.GetPortNames();
-            foreach (string port in ports)
-            {
-                SerialPort porto = new SerialPort(port, 9600);
-                porto.Close();
-            }
-        }
-
         // Events:
-
-        // Fires when aTimer elapsed event is called
-        public void OnTimedEvent(object sender, System.Timers.ElapsedEventArgs e)
-        {
-            ClosePorts();
-            aTimer.Enabled = false;
-        }
-
-        // This reads the data and saves it to returnMessage
-        public void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
-        {
-            SerialPort sp = (SerialPort)sender;
-            returnMessage += sp.ReadExisting();
-            if (returnMessage.Contains("CONNECTED"))
-            {
-                returnMessage = "";
-                ArduinoPort = sp;
-                ClosePorts();
-                ArduinoPort.Open();
-                aTimer.Enabled = true;
-            }
-            else if (returnMessage.Contains("RESEND"))
-            {
-                returnMessage = "";
-                ArduinoPort = sp;
-                message = "IDENTIFY\n";
-                Sender(sp);
-            }
-            else if (returnMessage.Count() > 16)
-            {
-                returnMessage = "";
-                message = "RESEND\n";
-                Sender(sp);
-            }
-        }
 
         // This event occurs when the user drags over the form with
         // the mouse during a drag and drop operation
@@ -204,6 +160,13 @@ namespace ArduinoDriver
             }
 
             file.Close();
+        }
+
+        private void COMBox_DropDown(object sender, EventArgs e)
+        {
+            COMBox.Items.Clear();
+            ports = SerialPort.GetPortNames();
+            COMBox.Items.AddRange(ports);
         }
     }
 }

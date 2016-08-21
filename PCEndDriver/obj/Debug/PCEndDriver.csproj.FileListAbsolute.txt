@@ -1,9 +1,8 @@
 C:\GitHub\PCEndDriver\PCEndDriver\bin\Debug\PCEndDriver.exe.config
 C:\GitHub\PCEndDriver\PCEndDriver\bin\Debug\PCEndDriver.exe
-C:\GitHub\PCEndDriver\PCEndDriver\bin\Debug\PCEndDriver.pdb
 C:\GitHub\PCEndDriver\PCEndDriver\obj\Debug\PCEndDriver.csprojResolveAssemblyReference.cache
+C:\GitHub\PCEndDriver\PCEndDriver\obj\Debug\ArduinoDriver.ArduinoPrinter.resources
 C:\GitHub\PCEndDriver\PCEndDriver\obj\Debug\PCEndDriver.Properties.Resources.resources
 C:\GitHub\PCEndDriver\PCEndDriver\obj\Debug\PCEndDriver.csproj.GenerateResource.Cache
 C:\GitHub\PCEndDriver\PCEndDriver\obj\Debug\PCEndDriver.exe
 C:\GitHub\PCEndDriver\PCEndDriver\obj\Debug\PCEndDriver.pdb
-C:\GitHub\PCEndDriver\PCEndDriver\obj\Debug\ArduinoDriver.ArduinoPrinter.resources

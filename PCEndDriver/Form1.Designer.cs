@@ -32,6 +32,7 @@
             this.Identify = new System.Windows.Forms.Button();
             this.label3 = new System.Windows.Forms.Label();
             this.Send = new System.Windows.Forms.Button();
+            this.COMBox = new System.Windows.Forms.ComboBox();
             this.SuspendLayout();
             // 
             // InfoBox
@@ -46,7 +47,7 @@
             // 
             // Identify
             // 
-            this.Identify.Location = new System.Drawing.Point(12, 226);
+            this.Identify.Location = new System.Drawing.Point(139, 228);
             this.Identify.Name = "Identify";
             this.Identify.Size = new System.Drawing.Size(75, 23);
             this.Identify.TabIndex = 8;
@@ -72,11 +73,21 @@
             this.Send.Text = "Send";
             this.Send.UseVisualStyleBackColor = true;
             // 
+            // COMBox
+            // 
+            this.COMBox.FormattingEnabled = true;
+            this.COMBox.Location = new System.Drawing.Point(12, 228);
+            this.COMBox.Name = "COMBox";
+            this.COMBox.Size = new System.Drawing.Size(121, 21);
+            this.COMBox.TabIndex = 13;
+            this.COMBox.DropDown += new System.EventHandler(this.COMBox_DropDown);
+            // 
             // ArduinoPrinter
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(870, 261);
+            this.Controls.Add(this.COMBox);
             this.Controls.Add(this.Send);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.Identify);
@@ -94,6 +105,7 @@
         private System.Windows.Forms.Button Identify;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Button Send;
+        private System.Windows.Forms.ComboBox COMBox;
     }
 }
 
