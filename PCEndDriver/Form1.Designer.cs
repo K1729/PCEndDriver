@@ -34,6 +34,10 @@
             this.Send = new System.Windows.Forms.Button();
             this.COMBox = new System.Windows.Forms.ComboBox();
             this.Read = new System.Windows.Forms.Button();
+            this.DebugBox = new System.Windows.Forms.TextBox();
+            this.label1 = new System.Windows.Forms.Label();
+            this.MessageBox = new System.Windows.Forms.TextBox();
+            this.label2 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // InfoBox
@@ -42,7 +46,7 @@
             this.InfoBox.Multiline = true;
             this.InfoBox.Name = "InfoBox";
             this.InfoBox.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.InfoBox.Size = new System.Drawing.Size(846, 195);
+            this.InfoBox.Size = new System.Drawing.Size(524, 195);
             this.InfoBox.TabIndex = 5;
             this.InfoBox.WordWrap = false;
             // 
@@ -94,11 +98,48 @@
             this.Read.UseVisualStyleBackColor = true;
             this.Read.Click += new System.EventHandler(this.Read_Click);
             // 
+            // DebugBox
+            // 
+            this.DebugBox.Location = new System.Drawing.Point(542, 25);
+            this.DebugBox.Multiline = true;
+            this.DebugBox.Name = "DebugBox";
+            this.DebugBox.Size = new System.Drawing.Size(316, 195);
+            this.DebugBox.TabIndex = 15;
+            // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(539, 9);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(73, 13);
+            this.label1.TabIndex = 16;
+            this.label1.Text = "DebugScreen";
+            // 
+            // MessageBox
+            // 
+            this.MessageBox.Location = new System.Drawing.Point(542, 226);
+            this.MessageBox.Name = "MessageBox";
+            this.MessageBox.Size = new System.Drawing.Size(235, 20);
+            this.MessageBox.TabIndex = 17;
+            // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(483, 226);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(53, 13);
+            this.label2.TabIndex = 18;
+            this.label2.Text = "Message:";
+            // 
             // ArduinoPrinter
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(870, 261);
+            this.Controls.Add(this.label2);
+            this.Controls.Add(this.MessageBox);
+            this.Controls.Add(this.label1);
+            this.Controls.Add(this.DebugBox);
             this.Controls.Add(this.Read);
             this.Controls.Add(this.COMBox);
             this.Controls.Add(this.Send);
@@ -120,6 +161,10 @@
         private System.Windows.Forms.Button Send;
         private System.Windows.Forms.ComboBox COMBox;
         private System.Windows.Forms.Button Read;
+        private System.Windows.Forms.TextBox DebugBox;
+        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.TextBox MessageBox;
+        private System.Windows.Forms.Label label2;
     }
 }
 

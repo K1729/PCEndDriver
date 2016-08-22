@@ -34,12 +34,13 @@ namespace ArduinoDriver
             this.DragDrop += new DragEventHandler(Form_DragDrop);
         }
 
+        // Sets the default port
         public void SetComPort()
         {
             try
             {
-                InfoBox.AppendText(COMBox.SelectedItem.ToString());
-                InfoBox.AppendText(Environment.NewLine);
+                DebugBox.AppendText(COMBox.SelectedItem.ToString());
+                DebugBox.AppendText(Environment.NewLine);
                 ArduinoPort = new SerialPort(COMBox.SelectedItem.ToString());
                 message = "IDENTIFY\n";
                 try
@@ -48,15 +49,15 @@ namespace ArduinoDriver
                 }
                 catch (UnauthorizedAccessException ex)
                 {
-                    InfoBox.AppendText("Unauthorized Access Exception! Cannot open port " + COMBox.SelectedValue.ToString());
-                    InfoBox.AppendText(Environment.NewLine);
-                    InfoBox.AppendText(ex.ToString());
+                    DebugBox.AppendText("Unauthorized Access Exception! Cannot open port " + COMBox.SelectedValue.ToString());
+                    DebugBox.AppendText(Environment.NewLine);
+                    DebugBox.AppendText(ex.ToString());
                 }
                 catch (Exception ex)
                 {
-                    InfoBox.AppendText("Unknown error: ");
-                    InfoBox.AppendText(Environment.NewLine);
-                    InfoBox.AppendText(ex.ToString());
+                    DebugBox.AppendText("Unknown error: ");
+                    DebugBox.AppendText(Environment.NewLine);
+                    DebugBox.AppendText(ex.ToString());
                 }
                 Sender(ArduinoPort);
                 Thread.Sleep(500);
@@ -66,12 +67,28 @@ namespace ArduinoDriver
                 {
                     InfoBox.AppendText(returnMessage);
                     returnMessage = "";
-                    ArduinoPort.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
+                    try
+                    {
+                        using (ArduinoPort)
+                        {
+                            ArduinoPort.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
+                            DebugBox.AppendText("Created serial event handler");
+                            DebugBox.AppendText(Environment.NewLine);
+                            GC.KeepAlive(ArduinoPort);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        DebugBox.AppendText("Could not create serial event handler");
+                        DebugBox.AppendText(Environment.NewLine);
+                        DebugBox.AppendText(ex.ToString());
+                        DebugBox.AppendText(Environment.NewLine);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                InfoBox.Text += "\nError: " + ex.ToString();
+                DebugBox.Text += "\nError: " + ex.ToString();
             }
         }
 
@@ -88,11 +105,15 @@ namespace ArduinoDriver
                     n++;
                 }
                 porto.Write(buffer, 0, messageLength - 1);
+                DebugBox.AppendText("Message sent");
+                DebugBox.AppendText(Environment.NewLine);
             }
             catch (Exception ex)
             {
-                InfoBox.Text += "Exception in conversion funktion:\r\n";
-                InfoBox.Text += ex.ToString();
+                DebugBox.AppendText("Exception in conversion funktion:");
+                DebugBox.AppendText(Environment.NewLine);
+                DebugBox.AppendText(ex.ToString());
+                DebugBox.AppendText(Environment.NewLine);
             }
         }
 
@@ -120,7 +141,7 @@ namespace ArduinoDriver
                 }
                 catch (Exception ex)
                 {
-                    InfoBox.Text = ex.ToString();
+                    DebugBox.Text = ex.ToString();
                 }
             }
 
@@ -149,7 +170,7 @@ namespace ArduinoDriver
             // Tästä ekasta saadaan tuo osoite. Voitaisiin käyttää sitä tuon
             // tiedoston lukemiseen...
 
-            InfoBox.Text = FileList[0];
+            DebugBox.Text = FileList[0];
 
             // Do something with the data...
             lineReader(FileList[0]);
@@ -157,22 +178,40 @@ namespace ArduinoDriver
 
         private void Read_Click(object sender, EventArgs e)
         {
-            lineReader(message);
+            // lineReader(message);
         }
 
         public void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
         {
-            int u = 10;
-            SerialPort sp = (SerialPort)sender;
-            while(sp.BytesToRead> 0 && u > 0)
+            using (ArduinoPort)
             {
-                u--;
-                returnMessage = sp.ReadLine();
-                InfoBox.AppendText(returnMessage);
-                InfoBox.AppendText(Environment.NewLine);
+                Thread.Sleep(1);
+
+                SerialPort sp = (SerialPort)sender;
+                returnMessage += sp.ReadExisting();
+
+                if (DebugBox.InvokeRequired)
+                {
+                    DebugBox.Invoke(new Action(() =>
+                    {
+                        DebugBox.AppendText("Message received.");
+                        InfoBox.AppendText(Environment.NewLine);
+                    }));
+                }
+                DebugBox.AppendText("Data received!");
+                DebugBox.AppendText(Environment.NewLine);
+
+                if (InfoBox.InvokeRequired)
+                {
+                    InfoBox.Invoke(new Action(() => {
+                        InfoBox.AppendText(returnMessage);
+                        InfoBox.AppendText(Environment.NewLine);
+                    }));
+                }
             }
         }
 
+        // Identify button
         private void button5_Click(object sender, EventArgs e)
         {
             InfoBox.Text = "";
@@ -180,6 +219,7 @@ namespace ArduinoDriver
             SetComPort();
         }
 
+        // This updates the dropdown list
         private void COMBox_DropDown(object sender, EventArgs e)
         {
             COMBox.Items.Clear();
@@ -187,10 +227,29 @@ namespace ArduinoDriver
             COMBox.Items.AddRange(ports);
         }
 
+        // This sends message recorded in MessageBox.
         private void Send_Click(object sender, EventArgs e)
         {
-            message = "TASK\n";
-            Sender(ArduinoPort);
+            DebugBox.AppendText("Trying to send message.");
+            DebugBox.AppendText(Environment.NewLine);
+            message = MessageBox.Text;
+            DebugBox.AppendText(message);
+            DebugBox.AppendText(Environment.NewLine);
+            using (ArduinoPort)
+            {
+                try
+                {
+                    ArduinoPort.Open();
+                }
+                catch (Exception ex)
+                {
+                    DebugBox.AppendText("Error in Send event:");
+                    DebugBox.AppendText(Environment.NewLine);
+                    DebugBox.AppendText(ex.ToString());
+                    DebugBox.AppendText(Environment.NewLine);
+                }
+                Sender(ArduinoPort);
+            }
         }
     }
 }
