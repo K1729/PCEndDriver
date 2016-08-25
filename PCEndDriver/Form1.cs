@@ -41,11 +41,14 @@ namespace ArduinoDriver
             {
                 DebugBox.AppendText(COMBox.SelectedItem.ToString());
                 DebugBox.AppendText(Environment.NewLine);
-                ArduinoPort = new SerialPort(COMBox.SelectedItem.ToString());
-                message = "IDENTIFY\n";
+                ArduinoPort = new SerialPort(COMBox.SelectedItem.ToString(), 9600, Parity.None, 8, StopBits.One);
+                ArduinoPort.Handshake = Handshake.None;
+                ArduinoPort.RtsEnable = true;
+                message = "IDENTIFY";
                 try
                 {
                     ArduinoPort.Open();
+                    Thread.Sleep(200);
                 }
                 catch (UnauthorizedAccessException ex)
                 {
@@ -60,7 +63,6 @@ namespace ArduinoDriver
                     DebugBox.AppendText(ex.ToString());
                 }
                 Sender(ArduinoPort);
-                Thread.Sleep(500);
 
                 returnMessage += ArduinoPort.ReadLine();
                 if (returnMessage.Contains("CONNECTED"))
@@ -71,10 +73,9 @@ namespace ArduinoDriver
                     {
                         using (ArduinoPort)
                         {
-                            ArduinoPort.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
+                            ArduinoPort.DataReceived += new SerialDataReceivedEventHandler(OnDataReveiced);
                             DebugBox.AppendText("Created serial event handler");
                             DebugBox.AppendText(Environment.NewLine);
-                            GC.KeepAlive(ArduinoPort);
                         }
                     }
                     catch (Exception ex)
@@ -97,16 +98,28 @@ namespace ArduinoDriver
         {
             byte[] buffer = new byte[messageLength];
             int n = 0;
+            message = message + '\n';
             try
             {
+                DebugBox.AppendText("BreakState: " + ArduinoPort.BreakState + "\r\n");
+                DebugBox.AppendText("Clear-to-Send line: " + ArduinoPort.CtsHolding + "\r\n");
+                DebugBox.AppendText("CanRaiseEvent: " + CanRaiseEvents + "\r\n");
                 foreach (char c in message)
                 {
                     buffer[n] = Convert.ToByte(c);
                     n++;
                 }
                 porto.Write(buffer, 0, messageLength - 1);
-                DebugBox.AppendText("Message sent");
-                DebugBox.AppendText(Environment.NewLine);
+                Thread.Sleep(500);
+                if (ArduinoPort.BytesToWrite == 0)
+                {
+                    DebugBox.AppendText("Message sent");
+                    DebugBox.AppendText(Environment.NewLine);
+                }
+                else
+                {
+                    DebugBox.AppendText("Message has not yet been sent\r\n");
+                }
             }
             catch (Exception ex)
             {
@@ -176,30 +189,39 @@ namespace ArduinoDriver
             lineReader(FileList[0]);
         }
 
+        // Reads the buffer if the event doesn't fire
         private void Read_Click(object sender, EventArgs e)
         {
+            // Got error here. "Port is closed!"
+            // ArduinoPort.Open();
+            // This means the port closed before the arduino could respond!
+            returnMessage += (string)ArduinoPort.ReadExisting();
+
+            DebugBox.AppendText("Message received.");
+            DebugBox.AppendText(Environment.NewLine);
+
+            InfoBox.AppendText(returnMessage);
+            InfoBox.AppendText(Environment.NewLine);
             // lineReader(message);
         }
 
-        public void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
+        public void OnDataReveiced(object sender, SerialDataReceivedEventArgs e)
         {
             using (ArduinoPort)
             {
                 Thread.Sleep(1);
 
                 SerialPort sp = (SerialPort)sender;
-                returnMessage += sp.ReadExisting();
+                returnMessage += (string)sp.ReadExisting();
 
                 if (DebugBox.InvokeRequired)
                 {
                     DebugBox.Invoke(new Action(() =>
                     {
                         DebugBox.AppendText("Message received.");
-                        InfoBox.AppendText(Environment.NewLine);
+                        DebugBox.AppendText(Environment.NewLine);
                     }));
                 }
-                DebugBox.AppendText("Data received!");
-                DebugBox.AppendText(Environment.NewLine);
 
                 if (InfoBox.InvokeRequired)
                 {
@@ -230,11 +252,12 @@ namespace ArduinoDriver
         // This sends message recorded in MessageBox.
         private void Send_Click(object sender, EventArgs e)
         {
-            DebugBox.AppendText("Trying to send message.");
+            DebugBox.AppendText("Trying to send message:");
             DebugBox.AppendText(Environment.NewLine);
             message = MessageBox.Text;
             DebugBox.AppendText(message);
             DebugBox.AppendText(Environment.NewLine);
+            ArduinoPort.Close();
             using (ArduinoPort)
             {
                 try
