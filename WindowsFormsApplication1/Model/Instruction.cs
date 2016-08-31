@@ -12,15 +12,10 @@ namespace WindowsFormsApplication1.Model
     class Instruction
     {
         public bool newCommand { get; set; }
-        private string instructions;
+        public string instructions { get; set; }
         
         public Instruction() { }
-
-        public override string ToString()
-        {
-            return instructions;
-        }
-
+        
         public Instruction(bool newcommand, string str)
         {
             newCommand = newcommand;

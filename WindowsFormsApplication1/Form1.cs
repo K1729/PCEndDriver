@@ -26,8 +26,6 @@ namespace WindowsFormsApplication1
         public SerialPort ArduinoPort;
         public delegate void passString( string myString );
         public passString myDelegate;
-        string message;
-        string returnMessage = "";
         const int messageLength = 16;
 
         public Form1()
@@ -36,13 +34,12 @@ namespace WindowsFormsApplication1
             backgroundWorker1.WorkerSupportsCancellation = true;
             backgroundWorker1.DoWork += new DoWorkEventHandler(backgroundWorker1_DoWork);
             myDelegate = new passString(infoBoxUpdater);
+            button1.Enabled = false;
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
             InfoBox.Text = "";
-            // identify arduino
-            thingy();
         }
 
         private void Send_Click(object sender, EventArgs e)
@@ -50,61 +47,36 @@ namespace WindowsFormsApplication1
             if (backgroundWorker1.IsBusy != true)
             {
                 _instructions.Clear();
-                message = MessageBox.Text;
                 backgroundWorker1.RunWorkerAsync(COMBox.SelectedItem.ToString());
             }
             else
             {
                 InfoBox.AppendText("Worker is busy...\r\n");
-                InfoBox.AppendText("Leaving instructions in queue.\r\n");
-                Instruction newInstruction = new Instruction(true, message);
-
-                // you need to make sure only
-                // one thread can access the list
-                // at a time
-                lock (_lock)
-                {
-                    _instructions.Enqueue(newInstruction);
-                }
-
-                Thread.Sleep(100);
-                // notify the waiting thread
-                _signal.Set();
             }
-        }
+            Instruction newInstruction = new Instruction(true, MessageBox.Text);
 
-        public void thingy()
-        {
-            ArduinoPort = new SerialPort(COMBox.SelectedItem.ToString());
-            message = "IDENTIFY";
+            // you need to make sure only
+            // one thread can access the list
+            // at a time
+            lock (_lock)
+            {
+                _instructions.Enqueue(newInstruction);
+            }
 
-            Sender(ArduinoPort);
             Thread.Sleep(200);
-
-            returnMessage += ArduinoPort.ReadLine();
-            if (returnMessage.Contains("CONNECTED"))
-            {
-                InfoBox.AppendText(returnMessage);
-                returnMessage = "";
-                // Watcher.ArduinoPort = ArduinoPort;
-                // tWatcher = new Thread(new ThreadStart(Watcher.Listener));
-            }
-            else
-            {
-                InfoBox.AppendText("Arduino not found");
-            }
-            ArduinoPort.Close();
+            // notify the waiting thread
+            _signal.Set();
         }
 
         // Sender opens the port. So it must be closed afterwards.
-        public void Sender(SerialPort porto)
+        public void Sender(SerialPort porto, string theMessage)
         {
             byte[] buffer = new byte[messageLength];
             int n = 0;
-            message = message + '\n';
+            theMessage = theMessage + '\n';
             try
             {
-                foreach (char c in message)
+                foreach (char c in theMessage)
                 {
                     buffer[n] = Convert.ToByte(c);
                     n++;
@@ -115,7 +87,7 @@ namespace WindowsFormsApplication1
                 }
                 catch { }
                 Thread.Sleep(200);
-                porto.Write(buffer, 0, messageLength - 1);
+                porto.Write(buffer, 0, theMessage.Count());
             }
             catch (Exception ex)
             {
@@ -141,7 +113,7 @@ namespace WindowsFormsApplication1
 
         private void infoBoxUpdater(string myString)
         {
-            InfoBox.AppendText(myString + "\r\n");
+            InfoBox.AppendText(myString);
         }
 
         // This is background worker. It does the loop and keeps port alive.
@@ -153,13 +125,11 @@ namespace WindowsFormsApplication1
 
             string messageArduino = "";
             bool done = false;
-            Sender(sp);
 
             while (!done)
             {
                 if (worker.CancellationPending == true)
                 {
-                    done = true;
                     if (InfoBox.InvokeRequired)
                     {
                         InfoBox.Invoke(myDelegate, new object[] { ("Return message: " + messageArduino) });
@@ -168,6 +138,7 @@ namespace WindowsFormsApplication1
                     {
                         InfoBox.Text += "Return message: " + messageArduino + "\r\n";
                     }
+                    done = true;
                     e.Result = messageArduino;
                     sp.Close();
                     e.Cancel = true;
@@ -175,29 +146,34 @@ namespace WindowsFormsApplication1
                 }
                 else
                 {
-                    if (sp.BytesToRead > 0)
+                    if (sp.IsOpen)
                     {
-                        Thread.Sleep(200);
-                        messageArduino += sp.ReadExisting();
-                        if (InfoBox.InvokeRequired)
+                        if (sp.BytesToRead > 0)
                         {
-                            InfoBox.Invoke(myDelegate, new object[] { ("Return message: " + messageArduino) });
-                        }
-                        else
-                        {
-                            InfoBox.Text += "Return message: \r\n";
-                            InfoBox.Text += messageArduino;
+                            Thread.Sleep(200);
+                            messageArduino += sp.ReadExisting();
+                            if (InfoBox.InvokeRequired)
+                            {
+                                InfoBox.Invoke(myDelegate, new object[] { ("Return message: " + messageArduino) });
+                            }
+                            else
+                            {
+                                InfoBox.Text += "Return message: \r\n";
+                                InfoBox.Text += messageArduino;
+                            }
                         }
                     }
 
-                    if (command.newCommand)
+                    if (command != null)
                     {
-                        message = command.ToString();
-                        Sender(sp);
-                        command.newCommand = false;
+                        if (command.newCommand)
+                        {
+                            Sender(sp, command.instructions);
+                            command.newCommand = false;
+                        }
                     }
 
-                    else if (_instructions.Count > 0)
+                    if (_instructions.Count > 0)
                     {
                         _signal.WaitOne();
                         command = null;
@@ -210,6 +186,14 @@ namespace WindowsFormsApplication1
                     else
                     {
                         Thread.Sleep(1000);
+                        if (InfoBox.InvokeRequired)
+                        {
+                            InfoBox.Invoke(myDelegate, new object[] { (".") });
+                        }
+                        else
+                        {
+                            InfoBox.Text += ".";
+                        }
                     }
                 }
             }
@@ -226,9 +210,7 @@ namespace WindowsFormsApplication1
 
         private void backgroundWorker1_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            returnMessage = (string)e.Result;
             InfoBox.AppendText("Background worker successfully shut down.\r\n");
-            InfoBox.AppendText("Return message: " + returnMessage + "\r\n");
         }
 
         private void backgroundWorker1_ProgressChanged(object sender, ProgressChangedEventArgs e)
